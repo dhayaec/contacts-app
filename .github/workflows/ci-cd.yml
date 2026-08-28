@@ -154,9 +154,10 @@ jobs:
           name: terraform-plan
           path: terraform/
 
-      - name: Terraform Apply
+      - name: Terraform Apply (fresh plan after imports)
         working-directory: terraform
-        run: terraform apply -auto-approve tfplan
+        # Imports changed state, so we re-plan fresh instead of using the stale artifact.
+        run: terraform plan -var="image_tag=${{ env.IMAGE_TAG }}" -out=tfplan-fresh && terraform apply -auto-approve tfplan-fresh
         env:
           TF_IN_AUTOMATION: true
 
