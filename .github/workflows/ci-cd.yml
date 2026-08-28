@@ -38,14 +38,12 @@ jobs:
           echo "Token endpoint: ${ACTIONS_ID_TOKEN_REQUEST_URL}"
           echo "Token available: $(if [ -n "${TOKEN}" ]; then echo YES; else echo NO; fi)"
           echo ""
-          echo "Fetching OIDC token..."
-          TOKEN_JSON=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+          echo "Fetching OIDC token (using request URL)..."
+          FULL_TOKEN=$(curl -sL -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/json; api-version=2.0" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
-          echo "Full response:"
-          echo "${TOKEN_JSON}" | head -30
-          echo ""
-          echo "Decoded payload:"
-          echo "${TOKEN_JSON}" | cut -d'.' -f2 | base64 -d 2>/dev/null | head -30 || echo "decode failed"
+          echo "Response length: $(echo "${FULL_TOKEN}" | wc -c)"
+          echo "Response start: $(echo "${FULL_TOKEN}" | head -c 200)"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
