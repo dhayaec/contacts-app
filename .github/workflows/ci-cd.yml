@@ -150,7 +150,7 @@ jobs:
           import_if_missing aws_iam_role.task_execution contacts-app-ecs-exec-role
           import_if_missing aws_iam_role.task contacts-app-ecs-task-role
           import_if_missing aws_iam_openid_connect_provider.github arn:aws:iam::095232028249:oidc-provider/token.actions.githubusercontent.com
-          import_if_missing aws_ecr_repository.app contacts-app
+          import_if_missing aws_ecr_repository.app contacts-app || echo "ECR will be created by terraform apply"
           import_if_missing aws_cloudwatch_log_group.ecs /ecs/contacts-app
           set -e
         env:
