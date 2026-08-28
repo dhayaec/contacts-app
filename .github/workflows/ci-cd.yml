@@ -3,129 +3,69 @@ name: CI/CD
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
   AWS_REGION: us-east-1
   ECR_REPO: contacts-app
-  IMAGE_TAG: ${{ github.sha }}
-
-permissions:
-  contents: read
-  id-token: write # Required for AWS OIDC
 
 jobs:
   build-and-push:
     name: Build & Push Docker
+    needs: terraform-apply
     runs-on: ubuntu-latest
-    outputs:
-      image_uri: ${{ steps.build-push.outputs.image_uri }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Debug OIDC token
-        env:
-          REPO: ${{ github.repository }}
-          REF: ${{ github.ref }}
-          ACTOR: ${{ github.actor }}
-          TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
-        run: |
-          echo "Repository: ${REPO}"
-          echo "Ref: ${REF}"
-          echo "Actor: ${ACTOR}"
-          echo "Token endpoint: ${ACTIONS_ID_TOKEN_REQUEST_URL}"
-          echo "Token available: $(if [ -n "${TOKEN}" ]; then echo YES; else echo NO; fi)"
-          echo ""
-          echo "Fetching OIDC token (using request URL)..."
-          FULL_TOKEN=$(curl -sL -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/json; api-version=2.0" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
-          echo "Response length: $(echo "${FULL_TOKEN}" | wc -c)"
-          echo "Response start: $(echo "${FULL_TOKEN}" | head -c 200)"
-
-      - name: Configure AWS Credentials (OIDC)
+      - uses: actions/checkout@v4
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::095232028249:role/GitHubActionsOIDC
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
+      - name: Login ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push Docker image
-        id: build-push
+      - name: Build and Push
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_URI: ${{ steps.login-ecr.outputs.registry }}/contacts-app:${{ env.IMAGE_TAG }}
+          IMAGE_URI: ${{ steps.login-ecr.outputs.registry }}/contacts-app:${{ github.sha }}
         run: |
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
-          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
-
-  terraform-plan:
-    name: Terraform Plan
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::095232028249:role/GitHubActionsOIDC
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.7.5"
-
-      - name: Terraform Init
-        working-directory: terraform
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="key=prod/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}" -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
-
-      - name: Terraform Plan
-        working-directory: terraform
-        run: terraform plan -var="image_tag=${{ env.IMAGE_TAG }}" -out=tfplan
 
   terraform-apply:
     name: Terraform Apply
-    needs: [build-and-push, terraform-plan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: dev
-      url: ${{ steps.terraform-output.outputs.alb_url }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials (OIDC)
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::095232028249:role/GitHubActionsOIDC
           aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.7.5"
-
+          terraform_version: "1.9.5"
       - name: Terraform Init
         working-directory: terraform
-        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="key=prod/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}" -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
-
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=prod/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -var="image_tag=${{ github.sha }}" -out=tfplan
+        env:
+          TF_IN_AUTOMATION: true
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply -auto-approve tfplan
         env:
           TF_IN_AUTOMATION: true
-
-      - name: Terraform Outputs
-        id: terraform-output
-        working-directory: terraform
-        run: |
-          echo "alb_url=$(terraform output -raw alb_url 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT

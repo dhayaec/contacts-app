@@ -9,13 +9,13 @@ terraform {
   }
 
   # Remote backend — uncomment once S3 bucket + DynamoDB table exist
-  # backend "s3" {
-  #   bucket         = "contacts-app-tfstate"
-  #   key            = "prod/terraform.tfstate"
-  #   region         = "us-east-1"
-  #   dynamodb_table = "contacts-app-tflock"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket         = "contacts-app-tfstate"
+    key            = "prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "contacts-app-tflock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
