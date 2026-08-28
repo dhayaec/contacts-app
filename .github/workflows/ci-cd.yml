@@ -127,6 +127,27 @@ jobs:
         working-directory: terraform
         run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="key=prod/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}" -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
 
+      - name: Import existing AWS resources into state (idempotent — skips already-imported)
+        working-directory: terraform
+        run: |
+          import_if_missing() {
+            local addr="$1" id="$2"
+            if terraform state list | grep -qE "^${addr}\$"; then
+              echo "✓ ${addr} already in state"
+            else
+              echo "→ Importing ${addr} (${id})"
+              terraform import "$addr" "$id" || echo "✗ Failed to import ${addr}"
+            fi
+          }
+          import_if_missing aws_vpc.main vpc-071672e2929deddd7
+          import_if_missing aws_iam_role.task_execution contacts-app-ecs-exec-role
+          import_if_missing aws_iam_role.task contacts-app-ecs-task-role
+          import_if_missing aws_iam_openid_connect_provider.github arn:aws:iam::095232028249:oidc-provider/token.actions.githubusercontent.com
+          import_if_missing aws_ecr_repository.app contacts-app
+          import_if_missing aws_cloudwatch_log_group.ecs /ecs/contacts-app
+        env:
+          TF_IN_AUTOMATION: true
+
       - name: Download Plan
         uses: actions/download-artifact@v4
         with:
