@@ -5,10 +5,10 @@ import { TodoList } from '@/components/TodoList';
 export default function Home() {
   return (
     <QueryProvider>
-      <main className="mx-auto min-h-screen max-w-2xl bg-gradient-to-b from-slate-50 to-slate-100 px-6 py-16 text-slate-900">
+      <main className="mx-auto min-h-screen max-w-2xl bg-linear-to-b from-slate-50 to-slate-100 px-6 py-16 text-slate-900">
         <header className="mb-10 text-center">
           <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">
-            Todo CRUD
+            Todo CRUD APP
           </h1>
           <p className="text-slate-500">Next.js + TanStack Query + JSONPlaceholder</p>
         </header>
