@@ -1,0 +1,11 @@
+.next/
+node_modules/
+.git/
+.husky/
+.vscode/
+.env*
+.terraform/
+*.md
+!README.md
+terraform/
+.github/
