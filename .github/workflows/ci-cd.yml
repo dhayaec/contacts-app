@@ -13,7 +13,7 @@ env:
 
 permissions:
   contents: read
-  id-token: write   # Required for AWS OIDC
+  id-token: write # Required for AWS OIDC
 
 jobs:
   build-and-push:
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
-      name: production
+      name: dev
       url: ${{ steps.terraform-output.outputs.alb_url }}
     steps:
       - uses: actions/checkout@v4
