@@ -120,7 +120,7 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve -var="image_tag=${{ env.IMAGE_TAG }}" tfplan
+        run: terraform apply -auto-approve tfplan
         env:
           TF_IN_AUTOMATION: true
 
