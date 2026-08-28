@@ -157,6 +157,25 @@ data "aws_iam_policy_document" "github_actions_inline" {
   }
 
   statement {
+    sid    = "Infrastructure"
+    effect = "Allow"
+    actions = [
+      "ec2:*",
+      "iam:CreateRole",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:GetRole",
+      "iam:GetOpenIDConnectProvider",
+      "iam:CreatePolicy",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:CreateInstanceProfile",
+      "iam:UpdateAssumeRolePolicy",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid    = "TerraformStateS3"
     effect = "Allow"
     actions = [
