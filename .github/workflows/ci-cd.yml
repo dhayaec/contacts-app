@@ -19,6 +19,8 @@ jobs:
   build-and-push:
     name: Build & Push Docker
     runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.build-push.outputs.image_uri }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,8 +44,6 @@ jobs:
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
           echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
-        outputs:
-          image_uri: ${{ env.IMAGE_URI }}
 
   terraform-plan:
     name: Terraform Plan
@@ -109,5 +109,3 @@ jobs:
         working-directory: terraform
         run: |
           echo "alb_url=$(terraform output -raw alb_url 2>/dev/null || echo 'N/A')" >> $GITHUB_OUTPUT
-        outputs:
-          alb_url: ${{ steps.terraform-output.outputs.alb_url }}
