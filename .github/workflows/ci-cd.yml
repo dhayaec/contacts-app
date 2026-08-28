@@ -131,18 +131,14 @@ jobs:
         working-directory: terraform
         run: |
           import_if_missing() {
-            local addr="$1" id="$2"
-            if terraform state list | grep -qE "^${addr}\$"; then
+            addr="$1"; id="$2"
+            if terraform state list 2>/dev/null | grep -qE "^${addr}\$"; then
               echo "✓ ${addr} already in state"
             else
               echo "→ Importing ${addr} (${id})"
-              set +e
-              terraform import "$addr" "$id" 2>&1
-              rc=$?
-              set -e
-              if [ $rc -ne 0 ]; then
-                echo "✗ Skipped ${addr} (not present, will be created)"
-              fi
+              out=$(terraform import "$addr" "$id" 2>&1); rc=$?
+              echo "$out"
+              [ $rc -eq 0 ] || echo "✗ Skipped ${addr} (will be created by apply)"
             fi
           }
           set +e
@@ -150,7 +146,7 @@ jobs:
           import_if_missing aws_iam_role.task_execution contacts-app-ecs-exec-role
           import_if_missing aws_iam_role.task contacts-app-ecs-task-role
           import_if_missing aws_iam_openid_connect_provider.github arn:aws:iam::095232028249:oidc-provider/token.actions.githubusercontent.com
-          import_if_missing aws_ecr_repository.app contacts-app || echo "ECR will be created by terraform apply"
+          import_if_missing aws_ecr_repository.app contacts-app || echo "✗ Skipped ECR (will be created by terraform apply)"
           import_if_missing aws_cloudwatch_log_group.ecs /ecs/contacts-app
           set -e
         env:
